@@ -13,10 +13,14 @@ const app = express();
 app.use(bodyParser.json());
 
 const events = eventIds => {
-    return Event.find({ _id: { $id: eventIds } })
+    return Event.find({ _id: { $in: eventIds } })
         .then(events => {
             return events.map(event => {
-                return { ...event, creator: user.bind(this, event.creator) };
+                return {
+                    ...event._doc,
+                    _id: event.id,
+                    creator: user.bind(this, event.creator)
+                };
             })
         })
         .catch(err => {
@@ -24,14 +28,18 @@ const events = eventIds => {
         });
 }
 
-const user = (userId) => {
+const user = userId => {
     return User.findById(userId)
         .then(user => {
-            return user;
+            return {
+                ...user._doc,
+                _id: user.id,
+                createdEvents: events.bind(this, user._doc.createdEvents)
+            }
         })
         .catch(err => {
             throw err;
-        });
+        })
 }
 
 app.use('/graphql', graphqlHttp({
@@ -81,16 +89,14 @@ app.use('/graphql', graphqlHttp({
     rootValue: {
         events: () => {
             return Event.find()
-                // .populate('creator')
                 .then((events) => {
                     return events.map(event => {
                         return {
                             ...event._doc,
-                            creator: user.bind(this, event.creator)
+                            _id: event.id,
+                            creator: user.bind(this, event._doc.creator)
                         };
                     });
-                    // return results;
-                    // return { ...events, creator}
                 })
                 .catch((err) => {
                     console.log(err);
